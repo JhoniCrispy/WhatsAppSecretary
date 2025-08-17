@@ -1,0 +1,31 @@
+{
+  "name": "whatsapp-secretary",
+  "version": "1.0.0",
+  "description": "WhatsApp to Google Calendar automation with local LLM",
+  "main": "src/whatsapp-secretary.js",
+  "scripts": {
+    "start": "node src/whatsapp-secretary.js",
+    "dev": "nodemon src/whatsapp-secretary.js",
+    "setup": "node scripts/setup.js"
+  },
+  "keywords": ["whatsapp", "calendar", "automation", "llm", "ai"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "whatsapp-web.js": "^1.22.2",
+    "qrcode-terminal": "^0.12.0",
+    "googleapis": "^126.0.1",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "p-limit": "^3.1.0",
+    "chalk": "^4.1.2",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
