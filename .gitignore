@@ -2,3 +2,5 @@ client_secret_540003406560-q3jo5go7964t6sopvp7kukdv33a5s900.apps.googleuserconte
 credentials.json
 .wwebjs_auth/*
 node_modules/*
+.wwebjs_cache/*
+.env
