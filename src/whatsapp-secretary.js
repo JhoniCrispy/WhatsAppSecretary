@@ -4,7 +4,10 @@ const pLimit = require('p-limit');
 const chalk = require('chalk');
 const config = require('./config');
 const LLMService = require('./services/llm-service');
+const MCPLLMService = require('./services/mcp-llm-service');
 const CalendarService = require('./services/calendar-service');
+const CalendarMCPServer = require('./mcp/calendar-server');
+const debug = require('./utils/debug');
 
 class WhatsAppSecretary {
   constructor() {
@@ -16,8 +19,14 @@ class WhatsAppSecretary {
       }
     });
     
-    this.llmService = new LLMService();
     this.calendarService = new CalendarService();
+    
+    // Initialize MCP components
+    this.mcpServer = new CalendarMCPServer(this.calendarService);
+    this.llmService = new MCPLLMService();
+    
+    // Also keep old LLM service as fallback
+    this.fallbackLLMService = new LLMService();
     
     // Rate limiting for calendar operations
     this.calendarLimit = pLimit(config.processing.maxConcurrentCalendarOps);
@@ -41,8 +50,8 @@ class WhatsAppSecretary {
     console.log(chalk.blue.bold('🚀 Starting WhatsApp Secretary...'));
     
     try {
-      // Check Ollama connection
-      const ollamaReady = await this.llmService.checkOllamaConnection();
+      // Check Ollama connection using fallback service
+      const ollamaReady = await this.fallbackLLMService.checkOllamaConnection();
       if (!ollamaReady) {
         console.log(chalk.red('❌ Ollama not ready. Please check setup instructions.'));
         return false;
@@ -54,6 +63,12 @@ class WhatsAppSecretary {
         console.log(chalk.red('❌ Google Calendar not ready. Please check credentials.'));
         return false;
       }
+      
+      // Initialize MCP Server
+      console.log(chalk.blue('🔧 Initializing MCP Server...'));
+      await this.mcpServer.connect();
+      this.llmService.setMCPServer(this.mcpServer);
+      console.log(chalk.green('✅ MCP Server initialized successfully'));
       
       // Initialize WhatsApp client
       console.log(chalk.blue('🔧 Initializing WhatsApp client...'));
@@ -158,55 +173,74 @@ class WhatsAppSecretary {
     try {
       const senderName = message._data.notifyName || 'Unknown';
       
-      console.log(chalk.blue('🤖 Analyzing message with LLM...'));
+      console.log(chalk.blue('🧠 Processing message with MCP-enhanced LLM...'));
       
-      // Extract event information using LLM
-      const eventInfo = await this.llmService.extractEventInfo(message.body, senderName);
+      // Use MCP-enhanced processing
+      const result = await this.llmService.processEventMessage(message.body, senderName);
       
-      if (!eventInfo.isEvent) {
-        console.log(chalk.gray('ℹ️  No event detected, skipping\n'));
+      if (!result.processed) {
+        console.log(chalk.gray(`ℹ️  No action taken: ${result.reason}\n`));
         return;
       }
       
       this.stats.eventsDetected++;
       
-      // Check for duplicates
-      const eventKey = this.calendarService.generateEventKey(eventInfo);
-      
-      if (this.isDuplicateEvent(eventKey)) {
-        this.stats.duplicatesSkipped++;
-        console.log(chalk.yellow(`⚠️  Duplicate event skipped: ${eventInfo.title}`));
-        console.log(chalk.gray('ℹ️  Same event detected within duplicate window\n'));
-        return;
+      // Send confirmation reply if enabled
+      if (config.whatsapp.autoReply && result.message) {
+        await message.reply(`📅 ${result.message}`);
       }
       
-      // Create calendar event
-      console.log(chalk.green(`🎉 Creating event: ${eventInfo.title}`));
+      console.log(chalk.green.bold(`✅ MCP Action completed!`));
+      console.log(chalk.blue(`📋 ${result.message}\n`));
       
-      const result = await this.calendarService.createEvent(eventInfo);
-      
-      if (result.success) {
-        this.stats.eventsCreated++;
-        
-        // Remember this event to prevent duplicates
-        this.rememberEvent(eventKey);
-        
-        // Send confirmation reply if enabled
-        if (config.whatsapp.autoReply) {
-          await message.reply(config.whatsapp.replyMessage);
-        }
-        
-        console.log(chalk.green.bold(`✅ Event created successfully!`));
-        console.log(chalk.blue(`🔗 ${result.htmlLink}\n`));
-        
-      } else {
-        this.stats.errorsEncountered++;
-        console.log(chalk.red(`❌ Failed to create event: ${result.error}\n`));
+      // Update statistics based on intent
+      switch (result.intent) {
+        case 'create_event':
+          this.stats.eventsCreated++;
+          break;
+        case 'edit_event':
+        case 'delete_event':
+        case 'query_events':
+          // These don't count as "created" but are successful operations
+          break;
       }
       
     } catch (error) {
       this.stats.errorsEncountered++;
       console.log(chalk.red('❌ Error processing message:'), error.message);
+      
+      // Fallback to old LLM service
+      console.log(chalk.yellow('🔄 Falling back to simple event detection...'));
+      try {
+        await this.processMessageFallback(message);
+      } catch (fallbackError) {
+        console.log(chalk.red('❌ Fallback also failed:'), fallbackError.message);
+      }
+    }
+  }
+
+  async processMessageFallback(message) {
+    const senderName = message._data.notifyName || 'Unknown';
+    
+    const eventInfo = await this.fallbackLLMService.extractEventInfo(message.body, senderName);
+    
+    if (!eventInfo.isEvent) {
+      console.log(chalk.gray('ℹ️  No event detected in fallback\n'));
+      return;
+    }
+    
+    const result = await this.calendarService.createEvent(eventInfo);
+    
+    if (result.success) {
+      this.stats.eventsCreated++;
+      
+      if (config.whatsapp.autoReply) {
+        await message.reply(config.whatsapp.replyMessage);
+      }
+      
+      console.log(chalk.green.bold(`✅ Fallback event created: ${eventInfo.title}`));
+    } else {
+      console.log(chalk.red(`❌ Fallback failed: ${result.error}`));
     }
   }
 
@@ -246,6 +280,12 @@ class WhatsAppSecretary {
     try {
       await this.client.destroy();
       this.printStatistics();
+      
+      // Generate debug summary
+      if (config.debug.enabled) {
+        debug.generateSummary();
+      }
+      
       console.log(chalk.green('✅ Shutdown complete. Goodbye! 👋\n'));
     } catch (error) {
       console.log(chalk.red('❌ Error during shutdown:'), error.message);

@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/whatsapp-secretary.js",
     "dev": "nodemon src/whatsapp-secretary.js",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "debug": "node scripts/debug-test.js",
+    "debug-verbose": "DEBUG_MODE=true DEBUG_LLM_PROMPTS=true DEBUG_LLM_RESPONSES=true node scripts/debug-test.js",
+    "test-commands": "node scripts/test-commands.js"
   },
   "keywords": ["whatsapp", "calendar", "automation", "llm", "ai"],
   "author": "Your Name",

@@ -294,6 +294,93 @@ class CalendarService {
     
     return `${titleKey}-${dateKey}`;
   }
+
+  async getEvents(startTime, endTime) {
+    try {
+      console.log(chalk.blue('📋 Fetching events from calendar...'));
+      
+      const response = await this.calendar.events.list({
+        calendarId: config.calendar.calendarId,
+        timeMin: startTime,
+        timeMax: endTime,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      const events = response.data.items || [];
+      console.log(chalk.green(`✅ Found ${events.length} events`));
+      
+      return events;
+      
+    } catch (error) {
+      console.log(chalk.red('❌ Failed to fetch events:'), error.message);
+      throw error;
+    }
+  }
+
+  async updateEvent(eventId, updates) {
+    try {
+      console.log(chalk.blue('📝 Updating calendar event...'));
+      
+      // First get the existing event
+      const existingEvent = await this.calendar.events.get({
+        calendarId: config.calendar.calendarId,
+        eventId: eventId,
+      });
+
+      // Merge updates with existing event
+      const updatedEvent = {
+        ...existingEvent.data,
+        ...updates
+      };
+
+      const response = await this.calendar.events.update({
+        calendarId: config.calendar.calendarId,
+        eventId: eventId,
+        resource: updatedEvent,
+      });
+
+      console.log(chalk.green('✅ Event updated successfully'));
+      
+      return {
+        success: true,
+        event: response.data
+      };
+      
+    } catch (error) {
+      console.log(chalk.red('❌ Failed to update event:'), error.message);
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async deleteEvent(eventId) {
+    try {
+      console.log(chalk.blue('🗑️  Deleting calendar event...'));
+      
+      await this.calendar.events.delete({
+        calendarId: config.calendar.calendarId,
+        eventId: eventId,
+      });
+
+      console.log(chalk.green('✅ Event deleted successfully'));
+      
+      return {
+        success: true
+      };
+      
+    } catch (error) {
+      console.log(chalk.red('❌ Failed to delete event:'), error.message);
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 module.exports = CalendarService;

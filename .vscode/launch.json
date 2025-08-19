@@ -1,0 +1,116 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🚀 WhatsApp Secretary (Debug)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/whatsapp-secretary.js",
+      "env": {
+        "DEBUG_MODE": "true",
+        "DEBUG_LLM_PROMPTS": "true",
+        "DEBUG_LLM_RESPONSES": "true",
+        "DEBUG_TOOL_CALLS": "true",
+        "DEBUG_CALENDAR_API": "true",
+        "SAVE_DEBUG_TO_FILE": "true",
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeArgs": ["--inspect"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "name": "🧪 Debug Test (LLM Only)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/debug-test.js",
+      "env": {
+        "DEBUG_MODE": "true",
+        "DEBUG_LLM_PROMPTS": "true",
+        "DEBUG_LLM_RESPONSES": "true",
+        "DEBUG_TOOL_CALLS": "true",
+        "DEBUG_CALENDAR_API": "true",
+        "SAVE_DEBUG_TO_FILE": "true",
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "name": "🔍 Debug Single Message",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/debug-single-message.js",
+      "env": {
+        "DEBUG_MODE": "true",
+        "DEBUG_LLM_PROMPTS": "true",
+        "DEBUG_LLM_RESPONSES": "true",
+        "DEBUG_TOOL_CALLS": "true",
+        "SAVE_DEBUG_TO_FILE": "true"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std",
+      "args": ["${input:testMessage}"]
+    },
+    {
+      "name": "📅 Debug Calendar Only",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/debug-calendar.js",
+      "env": {
+        "DEBUG_MODE": "true",
+        "DEBUG_CALENDAR_API": "true",
+        "SAVE_DEBUG_TO_FILE": "false"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "name": "🤖 Debug LLM Only",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/debug-llm.js",
+      "env": {
+        "DEBUG_MODE": "true",
+        "DEBUG_LLM_PROMPTS": "true",
+        "DEBUG_LLM_RESPONSES": "true",
+        "SAVE_DEBUG_TO_FILE": "false"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testMessage",
+      "description": "Enter test message",
+      "default": "Meeting tomorrow at 2pm",
+      "type": "promptString"
+    }
+  ]
+}

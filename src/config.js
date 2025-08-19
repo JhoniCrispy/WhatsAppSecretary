@@ -36,6 +36,16 @@ const config = {
     level: process.env.LOG_LEVEL || 'info',
     enableFileLogging: process.env.ENABLE_FILE_LOGGING === 'true' || false,
     logFilePath: process.env.LOG_FILE_PATH || './logs/app.log'
+  },
+
+  // Debug Configuration
+  debug: {
+    enabled: process.env.DEBUG_MODE === 'true' || true,
+    logLLMPrompts: process.env.DEBUG_LLM_PROMPTS === 'true' || true,
+    logLLMResponses: process.env.DEBUG_LLM_RESPONSES === 'true' || true,
+    logToolCalls: process.env.DEBUG_TOOL_CALLS === 'true' || true,
+    logCalendarAPI: process.env.DEBUG_CALENDAR_API === 'true' || true,
+    saveDebugToFile: process.env.SAVE_DEBUG_TO_FILE === 'true' || true
   }
 };
 
