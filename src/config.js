@@ -24,6 +24,16 @@ const config = {
     maxRetries: parseInt(process.env.LLM_MAX_RETRIES) || 3
   },
 
+  // OpenAI Configuration (GPT-4o-mini with MCP)
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 2000,
+    temperature: parseFloat(process.env.OPENAI_TEMPERATURE) || 0.1,
+    maxIterations: parseInt(process.env.MAX_TOOL_ITERATIONS) || 10,
+    enabled: process.env.USE_OPENAI === 'true' || false
+  },
+
   // Processing Configuration
   processing: {
     maxConcurrentCalendarOps: parseInt(process.env.MAX_CONCURRENT_CALENDAR_OPS) || 3,

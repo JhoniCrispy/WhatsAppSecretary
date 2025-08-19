@@ -204,7 +204,22 @@ class CalendarService {
     const now = moment().tz(this.timezone);
     let eventMoment;
 
-    // Parse date
+    // NEW: Handle direct ISO datetime from GPT-4
+    if (eventInfo.startDateTime) {
+      console.log(chalk.blue('📅 Using ISO datetime from GPT-4:'));
+      console.log(chalk.gray(`  Start: ${eventInfo.startDateTime}`));
+      console.log(chalk.gray(`  End: ${eventInfo.endDateTime || 'Auto +1 hour'}`));
+      
+      const startDateTime = eventInfo.startDateTime;
+      const endDateTime = eventInfo.endDateTime || this.addOneHour(eventInfo.startDateTime);
+      
+      return {
+        startDateTime: startDateTime,
+        endDateTime: endDateTime
+      };
+    }
+
+    // LEGACY: Parse date
     if (eventInfo.date) {
       const dateStr = eventInfo.date.toLowerCase();
       
@@ -297,7 +312,10 @@ class CalendarService {
 
   async getEvents(startTime, endTime) {
     try {
-      console.log(chalk.blue('📋 Fetching events from calendar...'));
+      console.log(chalk.blue('📅 Google Calendar API Request:'));
+      console.log(chalk.gray(`  Calendar ID: ${config.calendar.calendarId}`));
+      console.log(chalk.gray(`  Time Range: ${startTime} → ${endTime}`));
+      console.log(chalk.gray(`  Timezone: ${config.calendar.timezone}`));
       
       const response = await this.calendar.events.list({
         calendarId: config.calendar.calendarId,
@@ -308,12 +326,37 @@ class CalendarService {
       });
 
       const events = response.data.items || [];
-      console.log(chalk.green(`✅ Found ${events.length} events`));
+      
+      console.log(chalk.blue('📋 Google Calendar API Response:'));
+      console.log(chalk.gray(`  Total events found: ${events.length}`));
+      
+      if (events.length > 0) {
+        console.log(chalk.gray('  Events:'));
+        events.forEach((event, index) => {
+          console.log(chalk.gray(`    ${index + 1}. "${event.summary || 'No Title'}"`));
+          console.log(chalk.gray(`       Start: ${event.start?.dateTime || event.start?.date || 'Unknown'}`));
+          console.log(chalk.gray(`       End: ${event.end?.dateTime || event.end?.date || 'Unknown'}`));
+          console.log(chalk.gray(`       ID: ${event.id}`));
+        });
+      } else {
+        console.log(chalk.yellow('  ⚠️  No events found in this time range'));
+        console.log(chalk.yellow('  🔍 Debugging suggestions:'));
+        console.log(chalk.yellow('    1. Check if your calendar has events for tomorrow'));
+        console.log(chalk.yellow('    2. Verify calendar ID is correct'));
+        console.log(chalk.yellow('    3. Check timezone conversion'));
+        console.log(chalk.yellow(`    4. Current calendar: ${config.calendar.calendarId}`));
+      }
       
       return events;
       
     } catch (error) {
       console.log(chalk.red('❌ Failed to fetch events:'), error.message);
+      if (error.message.includes('not found')) {
+        console.log(chalk.yellow('💡 Possible issues:'));
+        console.log(chalk.yellow('  - Calendar ID might be wrong'));
+        console.log(chalk.yellow('  - Calendar might not be shared with your credentials'));
+        console.log(chalk.yellow('  - You might need to use a different calendar ID'));
+      }
       throw error;
     }
   }
@@ -380,6 +423,14 @@ class CalendarService {
         error: error.message
       };
     }
+  }
+
+  // Helper function to add one hour to ISO datetime
+  addOneHour(isoDateTime) {
+    const date = new Date(isoDateTime);
+    date.setHours(date.getHours() + 1);
+    // Preserve the original timezone format
+    return date.toISOString().replace('Z', '+03:00');
   }
 }
 

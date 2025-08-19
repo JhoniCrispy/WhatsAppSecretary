@@ -5,6 +5,7 @@ const chalk = require('chalk');
 const config = require('./config');
 const LLMService = require('./services/llm-service');
 const MCPLLMService = require('./services/mcp-llm-service');
+const GPT4MCPBridge = require('./services/gpt4-mcp-bridge');
 const CalendarService = require('./services/calendar-service');
 const CalendarMCPServer = require('./mcp/calendar-server');
 const debug = require('./utils/debug');
@@ -21,11 +22,20 @@ class WhatsAppSecretary {
     
     this.calendarService = new CalendarService();
     
-    // Initialize MCP components
-    this.mcpServer = new CalendarMCPServer(this.calendarService);
-    this.llmService = new MCPLLMService();
+    // Choose LLM service based on configuration
+    if (config.openai.enabled && config.openai.apiKey) {
+      console.log(chalk.blue('🤖 Using GPT-4 MCP Bridge'));
+      this.llmService = new GPT4MCPBridge(this.calendarService);
+      this.usingGPT4 = true;
+    } else {
+      console.log(chalk.blue('🤖 Using Ollama MCP Service'));
+      // Initialize local MCP components
+      this.mcpServer = new CalendarMCPServer(this.calendarService);
+      this.llmService = new MCPLLMService();
+      this.usingGPT4 = false;
+    }
     
-    // Also keep old LLM service as fallback
+    // Keep fallback LLM service
     this.fallbackLLMService = new LLMService();
     
     // Rate limiting for calendar operations
@@ -64,11 +74,17 @@ class WhatsAppSecretary {
         return false;
       }
       
-      // Initialize MCP Server
-      console.log(chalk.blue('🔧 Initializing MCP Server...'));
-      await this.mcpServer.connect();
-      this.llmService.setMCPServer(this.mcpServer);
-      console.log(chalk.green('✅ MCP Server initialized successfully'));
+      // Initialize LLM service based on type
+      if (!this.usingGPT4) {
+        // Initialize local MCP Server for Ollama
+        console.log(chalk.blue('🔧 Initializing local MCP Server...'));
+        await this.mcpServer.connect();
+        this.llmService.setMCPServer(this.mcpServer);
+        console.log(chalk.green('✅ Local MCP Server initialized successfully'));
+      } else {
+        // GPT-4 bridge is already initialized in constructor
+        console.log(chalk.green('✅ GPT-4 MCP Bridge ready'));
+      }
       
       // Initialize WhatsApp client
       console.log(chalk.blue('🔧 Initializing WhatsApp client...'));
@@ -157,6 +173,12 @@ class WhatsAppSecretary {
         return;
       }
 
+      // Skip messages that start with "Agent Response:" to avoid infinite loops
+      if (message.body.startsWith('Agent Response:')) {
+        console.log(chalk.gray('🔄 Skipping agent response to avoid infinite loop'));
+        return;
+      }
+
 
       // Use rate limiting for processing
       this.calendarLimit(async () => {
@@ -173,43 +195,69 @@ class WhatsAppSecretary {
     try {
       const senderName = message._data.notifyName || 'Unknown';
       
-      console.log(chalk.blue('🧠 Processing message with MCP-enhanced LLM...'));
-      
-      // Use MCP-enhanced processing
-      const result = await this.llmService.processEventMessage(message.body, senderName);
-      
-      if (!result.processed) {
-        console.log(chalk.gray(`ℹ️  No action taken: ${result.reason}\n`));
-        return;
-      }
-      
-      this.stats.eventsDetected++;
-      
-      // Send confirmation reply if enabled
-      if (config.whatsapp.autoReply && result.message) {
-        await message.reply(`📅 ${result.message}`);
-      }
-      
-      console.log(chalk.green.bold(`✅ MCP Action completed!`));
-      console.log(chalk.blue(`📋 ${result.message}\n`));
-      
-      // Update statistics based on intent
-      switch (result.intent) {
-        case 'create_event':
-          this.stats.eventsCreated++;
-          break;
-        case 'edit_event':
-        case 'delete_event':
-        case 'query_events':
-          // These don't count as "created" but are successful operations
-          break;
+      if (this.usingGPT4) {
+        console.log(chalk.blue('🧠 Processing message with GPT-4 MCP Bridge...'));
+        
+        // Use GPT-4 MCP Bridge
+        const result = await this.llmService.processMessage(message.body, senderName);
+        
+        if (!result.success) {
+          console.log(chalk.gray(`ℹ️  GPT-4 processing failed: ${result.error}\n`));
+          // Fallback to Ollama
+          await this.processMessageFallback(message);
+          return;
+        }
+        
+        this.stats.eventsDetected++;
+        this.stats.eventsCreated++; // GPT-4 handles all types of operations
+        
+        // Send confirmation reply if enabled
+        if (config.whatsapp.autoReply && result.response) {
+          await message.reply(`Agent Response: ${result.response}`);
+        }
+        
+        console.log(chalk.green.bold(`✅ GPT-4 completed after ${result.iterations} iterations!`));
+        console.log(chalk.blue(`📋 ${result.response}\n`));
+        
+      } else {
+        console.log(chalk.blue('🧠 Processing message with Ollama MCP...'));
+        
+        // Use Ollama MCP processing
+        const result = await this.llmService.processEventMessage(message.body, senderName);
+        
+        if (!result.processed) {
+          console.log(chalk.gray(`ℹ️  No action taken: ${result.reason}\n`));
+          return;
+        }
+        
+        this.stats.eventsDetected++;
+        
+        // Send confirmation reply if enabled
+        if (config.whatsapp.autoReply && result.message) {
+          await message.reply(`Agent Response: ${result.message}`);
+        }
+        
+        console.log(chalk.green.bold(`✅ Ollama MCP Action completed!`));
+        console.log(chalk.blue(`📋 ${result.message}\n`));
+        
+        // Update statistics based on intent
+        switch (result.intent) {
+          case 'create_event':
+            this.stats.eventsCreated++;
+            break;
+          case 'edit_event':
+          case 'delete_event':
+          case 'query_events':
+            // These don't count as "created" but are successful operations
+            break;
+        }
       }
       
     } catch (error) {
       this.stats.errorsEncountered++;
       console.log(chalk.red('❌ Error processing message:'), error.message);
       
-      // Fallback to old LLM service
+      // Fallback to simple LLM service
       console.log(chalk.yellow('🔄 Falling back to simple event detection...'));
       try {
         await this.processMessageFallback(message);
@@ -235,7 +283,7 @@ class WhatsAppSecretary {
       this.stats.eventsCreated++;
       
       if (config.whatsapp.autoReply) {
-        await message.reply(config.whatsapp.replyMessage);
+        await message.reply(`Agent Response: ${config.whatsapp.replyMessage}`);
       }
       
       console.log(chalk.green.bold(`✅ Fallback event created: ${eventInfo.title}`));

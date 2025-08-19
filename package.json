@@ -9,21 +9,33 @@
     "setup": "node scripts/setup.js",
     "debug": "node scripts/debug-test.js",
     "debug-verbose": "DEBUG_MODE=true DEBUG_LLM_PROMPTS=true DEBUG_LLM_RESPONSES=true node scripts/debug-test.js",
-    "test-commands": "node scripts/test-commands.js"
+    "test-commands": "node scripts/test-commands.js",
+    "test-gpt4": "node scripts/test-gpt4.js",
+    "test-gpt4-real": "node scripts/test-gpt4-real.js",
+    "test-function-calling": "node scripts/test-function-calling.js",
+    "start-gpt4": "node scripts/start-gpt4.js",
+    "debug-calendar": "node scripts/debug-calendar.js"
   },
-  "keywords": ["whatsapp", "calendar", "automation", "llm", "ai"],
+  "keywords": [
+    "whatsapp",
+    "calendar",
+    "automation",
+    "llm",
+    "ai"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "whatsapp-web.js": "^1.22.2",
-    "qrcode-terminal": "^0.12.0",
-    "googleapis": "^126.0.1",
     "axios": "^1.6.0",
-    "dotenv": "^16.3.1",
-    "p-limit": "^3.1.0",
     "chalk": "^4.1.2",
+    "dotenv": "^16.3.1",
+    "googleapis": "^126.0.1",
     "moment": "^2.29.4",
-    "moment-timezone": "^0.5.43"
+    "moment-timezone": "^0.5.43",
+    "openai": "^4.20.1",
+    "p-limit": "^3.1.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.22.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

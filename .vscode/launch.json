@@ -2,11 +2,36 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "🚀 WhatsApp Secretary (Debug)",
+      "name": "🚀 WhatsApp Secretary (Ollama)",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/src/whatsapp-secretary.js",
       "env": {
+        "USE_OPENAI": "false",
+        "DEBUG_MODE": "true",
+        "DEBUG_LLM_PROMPTS": "true",
+        "DEBUG_LLM_RESPONSES": "true",
+        "DEBUG_TOOL_CALLS": "true",
+        "DEBUG_CALENDAR_API": "true",
+        "SAVE_DEBUG_TO_FILE": "true",
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeArgs": ["--inspect"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "name": "🤖 WhatsApp Secretary (GPT-4)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/whatsapp-secretary.js",
+      "env": {
+        "USE_OPENAI": "true",
         "DEBUG_MODE": "true",
         "DEBUG_LLM_PROMPTS": "true",
         "DEBUG_LLM_RESPONSES": "true",
